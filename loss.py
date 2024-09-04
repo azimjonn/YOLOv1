@@ -24,7 +24,7 @@ class YOLOLoss(nn.Module):
         pred_boxes_confidence = pred_boxes[..., 4:5]                          # (batch_size, S, S, B)
         
         pred_boxes_coord_copy = pred_boxes_coord.clone()
-        pred_boxes_coord_copy[..., 2:] *= self.S                            # Convert width and height to relative to whole image
+        pred_boxes_coord_copy[..., 2:] *= self.S                            # Convert width and height to relative to grid cell
         
         target_box_copy = target_box_coord.clone()
         target_box_copy[..., 2:] *= self.S                                  # Convert width and height to relative to grid cell
@@ -72,14 +72,14 @@ class YOLOLoss(nn.Module):
         return total_loss.mean()
 
 if __name__ == "__main__":
-    batch_size = 16
+    batch_size = 64
     S = 7
     B = 2
     C = 80
     criterion = YOLOLoss(S=S, B=B, C=C)
 
-    targets = torch.zeros((batch_size, S, S, C + 5 * B))
-    predictions = torch.zeros((batch_size, S, S, C + 5 * B))
+    targets = torch.rand((batch_size, S, S, C + 5 * B))
+    predictions = torch.rand((batch_size, S, S, C + 5 * B))
 
     loss = criterion(predictions, targets)
 

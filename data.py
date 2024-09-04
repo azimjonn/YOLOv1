@@ -8,6 +8,18 @@ from pycocotools.coco import COCO
 from torchvision.transforms.functional import to_tensor, normalize, resize, to_pil_image
 
 def make_yolo_target(image, bboxes):
+    '''
+    Convets list of bounding boxes to yolo target format.
+
+    Parameters:
+    image: torch.Tensor, only used to get shapes of the image
+    bboxes: dict, list of bounding boxes
+        bbox: (x, y, width, height) - top left coordinate of image, width and height in image pixel coordinate system
+        class: integer in range [0, C), object class index in bounding box
+
+    Returns:
+    Tensor: shape with (batch_size, S, S, C + 5 * B)
+    '''
     assert image.shape[1] % config.S == 0
     assert image.shape[2] % config.S == 0
 
@@ -18,7 +30,6 @@ def make_yolo_target(image, bboxes):
     target = torch.zeros((config.S, config.S, depth))
     
     patch_class = {}    # cell -> class
-    boxes = {}          # cell -> number of boxes so far
 
     for bbox in bboxes:
         x_min, y_min, width, height = bbox['bbox']
@@ -34,11 +45,10 @@ def make_yolo_target(image, bboxes):
         assert 0 <= row < config.S
 
         cell = (row, col)
-        # one patch can only represent one class, but can represent B bounding boxes of same class
-        if cell not in patch_class or patch_class[cell] == class_idx:
-            one_hot = torch.zeros(config.C)
-            one_hot[class_idx] = 1.0
-            target[row, col, :config.C] = one_hot
+        # one patch can only represent one class
+        # and only one ground truth bounding box
+        if cell not in patch_class:
+            target[row, col, class_idx] = 1.0
 
             gt_bbox = (
                 (x_mid - col * grid_size_x) / grid_size_x,
@@ -47,14 +57,9 @@ def make_yolo_target(image, bboxes):
                 height / config.IMAGE_SIZE[1],
                 1.0
             )
-            num_boxes = boxes.get(cell, 0)
 
-            if num_boxes < config.B:
-                bbox_start = config.C
-                bbox_start += 5 * num_boxes
-                target[row, col, bbox_start:bbox_start+5] = torch.tensor(gt_bbox)
-
-                boxes[cell] = num_boxes + 1
+            bbox_start = config.C
+            target[row, col, bbox_start:bbox_start+5] = torch.tensor(gt_bbox)
 
             patch_class[cell] = class_idx
 

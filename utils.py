@@ -1,5 +1,4 @@
 import torch
-import config
 
 def intersection_over_union(box1, box2):
     '''
@@ -34,3 +33,19 @@ def intersection_over_union(box1, box2):
     iou = intersection_area / union_area
 
     return iou
+
+def keep_box(pred, C):
+    '''
+    pred: Tensor with shape (batch_size, S, S, C + 5 * B)
+    C: int, number of classes
+
+    Returns:
+    Tensor shaped (batch_size, S, S, 6)
+    last dimension represents (class, confidence, x, y, w, h) - coordinates and sides relative to whole image
+    '''
+    batch_size, S, _, depth = pred.shape
+    B = (depth - C) // 5
+
+    boxes = torch.zeros(batch_size, S, S, 6)
+
+    
