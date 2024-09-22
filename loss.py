@@ -21,7 +21,7 @@ class YOLOLoss(nn.Module):
                         .reshape(-1, self.S, self.S, self.B, 5)             # (batch_size, S, S, B, 5)
         
         pred_boxes_coord = pred_boxes[..., :4]                              # (batch_size, S, S, B, 4)
-        pred_boxes_confidence = pred_boxes[..., 4:5]                          # (batch_size, S, S, B)
+        pred_boxes_confidence = pred_boxes[..., 4:5]                        # (batch_size, S, S, B)
         
         pred_boxes_coord_copy = pred_boxes_coord.clone()
         pred_boxes_coord_copy[..., 2:] *= self.S                            # Convert width and height to relative to grid cell

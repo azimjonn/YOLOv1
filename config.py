@@ -9,7 +9,7 @@ C = 80
 
 # training image Size
 IMAGE_SIZE = (448, 448)
-COCO_ROOT = '/data/azimjon/coco/'
+COCO_ROOT = '/data/coco/'
 
 # training hyperparameters
 BATCH_SIZE = 64
