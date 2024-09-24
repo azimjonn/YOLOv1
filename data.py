@@ -65,11 +65,12 @@ def make_yolo_target(image, bboxes):
     return target
         
 class CocoObjectDetection:
-    def __init__(self, root, annFile, transforms=None):
+    def __init__(self, root, annFile, transforms=None, is_test=False):
         self.root = root
         self.coco = COCO(annFile)
         self.ids = list(sorted(self.coco.imgs.keys()))
         self.transforms = transforms
+        self.is_test = is_test
 
         self.category_to_class = {category_id:idx for idx, category_id in enumerate(self.coco.getCatIds())}
         self.class_to_category = {val:key for key, val in self.category_to_class.items()}
@@ -81,6 +82,8 @@ class CocoObjectDetection:
         return to_tensor(Image.open(path).convert('RGB'))
     
     def _load_target(self, id):
+        if self.is_test:
+            return []
         all_anns = self.coco.loadAnns(self.coco.getAnnIds(id))
         detecton_anns = [
                 {'bbox': ann['bbox'], 'class': self.category_to_class[ann['category_id']]}
@@ -92,6 +95,7 @@ class CocoObjectDetection:
         id = self.ids[index]
         image = self._load_image(id)
         bboxes = self._load_target(id)
+        image_shape = image.shape
 
         if self.transforms is not None:
             image, bboxes = self.transforms(image, bboxes)
@@ -110,6 +114,9 @@ class CocoObjectDetection:
         # normalize image
         image = normalize(image, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         
+        if self.is_test:
+            return image, (id, (image_shape[1], image_shape[2]))
+
         # create yolo target tensor
         target = make_yolo_target(image, resized_bboxes)
         
