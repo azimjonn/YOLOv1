@@ -26,7 +26,7 @@ def make_yolo_target(image, bboxes):
     grid_size_x = image.shape[1] / config.S
     grid_size_y = image.shape[2] / config.S
 
-    depth = 5 * config.B + config.C
+    depth = 5 + config.C
     target = torch.zeros((config.S, config.S, depth))
     
     patch_class = {}    # cell -> class
@@ -58,8 +58,7 @@ def make_yolo_target(image, bboxes):
                 1.0
             )
 
-            bbox_start = config.C
-            target[row, col, bbox_start:bbox_start+5] = torch.tensor(gt_bbox)
+            target[row, col, config.C:] = torch.tensor(gt_bbox)
 
             patch_class[cell] = class_idx
 

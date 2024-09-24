@@ -11,7 +11,7 @@ class YOLOLoss(nn.Module):
         self.lambda_coord = lambda_coord
         self.lambda_noobj = lambda_noobj
     
-    def forward(self, predictions, targets):
+    def forward(self, predictions, targets: torch.Tensor):
         target_class = targets[..., :self.C]                                # (batch_size, S, S, C)
         target_box_coord = targets[..., self.C:self.C+4]                    # (batch_size, S, S, 4)
         target_confidence = targets[..., self.C+4:self.C+5]                 # (batch_size, S, S, 1)
@@ -21,7 +21,7 @@ class YOLOLoss(nn.Module):
                         .reshape(-1, self.S, self.S, self.B, 5)             # (batch_size, S, S, B, 5)
         
         pred_boxes_coord = pred_boxes[..., :4]                              # (batch_size, S, S, B, 4)
-        pred_boxes_confidence = pred_boxes[..., 4:5]                        # (batch_size, S, S, B)
+        pred_boxes_confidence = pred_boxes[..., 4:5]                        # (batch_size, S, S, B, 1)
         
         pred_boxes_coord_copy = pred_boxes_coord.clone()
         pred_boxes_coord_copy[..., 2:] *= self.S                            # Convert width and height to relative to grid cell
@@ -47,18 +47,18 @@ class YOLOLoss(nn.Module):
         coord_loss = torch.sum(
             target_confidence * (
                 torch.square(target_box_coord[..., :2] - best_box_coord[..., :2]) +
-                torch.square(torch.sqrt(target_box_coord[..., 2:]) - torch.sqrt(best_box_coord[..., 2:]))
+                torch.square(torch.sqrt(target_box_coord[..., 2:]) - torch.sqrt(best_box_coord[..., 2:].clamp(min=0)))
             ),
             dim=[1, 2, 3]
         )
         
         obj_loss = torch.sum(
-            target_confidence * torch.square(target_confidence - best_box_confidence),
+            target_confidence * torch.square(1 - best_box_confidence),
             dim=[1, 2, 3]
         )
 
         noobj_loss = torch.sum(
-            (1 - target_confidence).unsqueeze(-2) * torch.square(0 - pred_boxes_confidence),
+            (1 - target_confidence).unsqueeze(-2) * torch.square(pred_boxes_confidence),
             dim=[1, 2, 3, 4]
         )
 
@@ -68,7 +68,7 @@ class YOLOLoss(nn.Module):
         )
 
         total_loss = self.lambda_coord * coord_loss + obj_loss + self.lambda_noobj * noobj_loss + cls_loss
-        print(total_loss.shape)
+
         return total_loss.mean()
 
 if __name__ == "__main__":
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     C = 80
     criterion = YOLOLoss(S=S, B=B, C=C)
 
-    targets = torch.rand((batch_size, S, S, C + 5 * B))
+    targets = torch.rand((batch_size, S, S, C + 5))
     predictions = torch.rand((batch_size, S, S, C + 5 * B))
 
     loss = criterion(predictions, targets)
